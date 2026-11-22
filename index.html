@@ -797,14 +797,29 @@ if (typeof module !== 'undefined') module.exports = XLSX;
 </script>
 <script>
 /* ===== Google Sheets backend (Apps Script web app) ===== */
-const AFAQ_API = 'https://script.google.com/macros/s/AKfycbwBtobJwfNuHF7depfb3VLZ_k_UpN6JRd3nLyUovgMkRZGLqcyUQLEEekFWN9SxO0mAVA/exec';
+const AFAQ_SB_URL = 'https://nmylsfuyqgtfjcldummk.supabase.co';
+const AFAQ_SB_KEY = 'sb_publishable_RyM6uxznmV0JYLMyBTON9Q_OOXOPQTD';
 const AF_KEY = 'afaq-session';
 const AF = { token: null, me: null, docs: [], subs: new Map(), loaded: false, ready: null, meRaw: '' };
 function afToken(){ try{ return sessionStorage.getItem(AF_KEY) || localStorage.getItem(AF_KEY) || null; }catch(e){ return null; } }
 function afSaveToken(t, remember){ try{ localStorage.removeItem(AF_KEY); sessionStorage.removeItem(AF_KEY); (remember?localStorage:sessionStorage).setItem(AF_KEY, t); }catch(e){} }
 function afClearToken(){ try{ localStorage.removeItem(AF_KEY); sessionStorage.removeItem(AF_KEY); }catch(e){} }
 async function afCall(body){
-  const res = await fetch(AFAQ_API, { method:'POST', body: JSON.stringify(body) }); // text/plain: no CORS preflight
+  const a = body.fn, t = body.token;
+  const map = {
+    login:    ['app_login',    { p_username: body.username, p_pw: body.pw }],
+    logout:   ['app_logout',   { p_token: t }],
+    snapshot: ['app_snapshot', { p_token: t }],
+    put:      ['app_put',      { p_token: t, p_path: body.path, p_data: body.data || {}, p_merge: !!body.merge }],
+    delete:   ['app_delete',   { p_token: t, p_path: body.path }]
+  };
+  const [name, payload] = map[a];
+  const res = await fetch(AFAQ_SB_URL + '/rest/v1/rpc/' + name, {
+    method: 'POST',
+    headers: { 'apikey': AFAQ_SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  if (!res.ok) return { ok: false, code: 'server' };
   return res.json();
 }
 function afId(){ return Array.from(crypto.getRandomValues(new Uint8Array(20)), b => (b % 36).toString(36)).join(''); }
